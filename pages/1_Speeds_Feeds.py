@@ -30,24 +30,20 @@ st.title("Speeds & Feeds")
 st.caption("Empower MFG - Built for Joshua")
 
 CENTER_DRILL_PRESETS = {
-    "Std 00": {"style": "Standard", "angle": 60.0, "pilot": 0.025000, "body": 0.1250, "C": 0.025000},
-    "Std 0": {"style": "Standard", "angle": 60.0, "pilot": 0.031250, "body": 0.1250, "C": 0.031250},
-    "Std 1": {"style": "Standard", "angle": 60.0, "pilot": 0.046875, "body": 0.1250, "C": 0.046875},
-    "Std 2": {"style": "Standard", "angle": 60.0, "pilot": 0.078125, "body": 0.1875, "C": 0.078125},
-    "Std 3": {"style": "Standard", "angle": 60.0, "pilot": 0.109375, "body": 0.2500, "C": 0.109375},
-    "Std 4": {"style": "Standard", "angle": 60.0, "pilot": 0.125000, "body": 0.3125, "C": 0.125000},
-    "Std 5": {"style": "Standard", "angle": 60.0, "pilot": 0.187500, "body": 0.4375, "C": 0.187500},
-    "Std 6": {"style": "Standard", "angle": 60.0, "pilot": 0.218750, "body": 0.5000, "C": 0.218750},
-    "Std 7": {"style": "Standard", "angle": 60.0, "pilot": 0.250000, "body": 0.6250, "C": 0.250000},
-    "Std 8": {"style": "Standard", "angle": 60.0, "pilot": 0.312500, "body": 0.7500, "C": 0.312500},
-    "Bell 11": {"style": "Bell", "angle": 120.0, "pilot": 0.046875, "body": 0.1250, "C": 0.046875},
-    "Bell 12": {"style": "Bell", "angle": 120.0, "pilot": 0.062500, "body": 0.1875, "C": 0.062500},
-    "Bell 13": {"style": "Bell", "angle": 120.0, "pilot": 0.093750, "body": 0.2500, "C": 0.093750},
-    "Bell 14": {"style": "Bell", "angle": 120.0, "pilot": 0.109375, "body": 0.3125, "C": 0.109375},
-    "Bell 15": {"style": "Bell", "angle": 120.0, "pilot": 0.156250, "body": 0.4375, "C": 0.156250},
-    "Bell 16": {"style": "Bell", "angle": 120.0, "pilot": 0.187500, "body": 0.5000, "C": 0.187500},
-    "Bell 17": {"style": "Bell", "angle": 120.0, "pilot": 0.218750, "body": 0.6250, "C": 0.218750},
-    "Bell 18": {"style": "Bell", "angle": 120.0, "pilot": 0.250000, "body": 0.7500, "C": 0.250000},
+    "Std 00": {"style": "Standard", "angle": 60.0, "pilot": 0.025000, "body": 0.1250, "pilot_length": 0.025000},
+    "Std 0": {"style": "Standard", "angle": 60.0, "pilot": 0.031250, "body": 0.1250, "pilot_length": 0.031250},
+    "Std 1": {"style": "Standard", "angle": 60.0, "pilot": 0.046875, "body": 0.1250, "pilot_length": 0.046875},
+    "Std 2": {"style": "Standard", "angle": 60.0, "pilot": 0.078125, "body": 0.1875, "pilot_length": 0.078125},
+    "Std 3": {"style": "Standard", "angle": 60.0, "pilot": 0.109375, "body": 0.2500, "pilot_length": 0.109375},
+    "Std 4": {"style": "Standard", "angle": 60.0, "pilot": 0.125000, "body": 0.3125, "pilot_length": 0.125000},
+    "Std 5": {"style": "Standard", "angle": 60.0, "pilot": 0.187500, "body": 0.4375, "pilot_length": 0.187500},
+    "Std 6": {"style": "Standard", "angle": 60.0, "pilot": 0.218750, "body": 0.5000, "pilot_length": 0.218750},
+    "Std 7": {"style": "Standard", "angle": 60.0, "pilot": 0.250000, "body": 0.6250, "pilot_length": 0.250000},
+    "Std 8": {"style": "Standard", "angle": 60.0, "pilot": 0.312500, "body": 0.7500, "pilot_length": 0.312500},
+    "Bell 11": {"style": "Bell", "angle": 120.0, "pilot": 0.046875, "body": 0.1250, "pilot_length": 0.046875},
+    "Bell 13": {"style": "Bell", "angle": 120.0, "pilot": 0.093750, "body": 0.2500, "pilot_length": 0.093750},
+    "Bell 15": {"style": "Bell", "angle": 120.0, "pilot": 0.156250, "body": 0.4375, "pilot_length": 0.156250},
+    "Bell 17": {"style": "Bell", "angle": 120.0, "pilot": 0.218750, "body": 0.6250, "pilot_length": 0.218750},
 }
 
 
@@ -95,10 +91,19 @@ def calculate_center_drill_depth(
     pilot_diameter_in: float,
     target_bell_diameter_in: float,
     included_angle_deg: float,
-    drill_length_in: float,
+    pilot_length_in: float,
 ) -> float:
     chamfer_depth = (target_bell_diameter_in - pilot_diameter_in) / (2 * math.tan(math.radians(included_angle_deg / 2)))
-    return chamfer_depth + drill_length_in
+    return chamfer_depth + pilot_length_in
+
+
+def calculate_center_drill_usable_depth(
+    pilot_diameter_in: float,
+    body_diameter_in: float,
+    included_angle_deg: float,
+    pilot_length_in: float,
+) -> float:
+    return calculate_center_drill_depth(pilot_diameter_in, body_diameter_in, included_angle_deg, pilot_length_in)
 
 
 def get_operator_notes(material_name: str):
@@ -185,9 +190,15 @@ def render_center_drill_depth_block(section_key: str, center_drill_size: str, pr
 
     pilot_diameter_in = preset_data["pilot"]
     body_diameter_in = preset_data["body"]
-    drill_length_in = preset_data["C"]
+    pilot_length_in = preset_data["pilot_length"]
     included_angle = preset_data["angle"]
     target_default_in = min(body_diameter_in, pilot_diameter_in + 0.0500)
+    usable_depth_in = calculate_center_drill_usable_depth(
+        pilot_diameter_in,
+        body_diameter_in,
+        included_angle,
+        pilot_length_in,
+    )
 
     d1, d2, d3, d4 = st.columns(4)
     with d1:
@@ -199,8 +210,15 @@ def render_center_drill_depth_block(section_key: str, center_drill_size: str, pr
     with d4:
         st.metric("Body / Bell Diameter", format_length(body_diameter_in, unit_mode))
 
+    p1, p2, p3 = st.columns(3)
+    p1.metric("Practical Pilot Depth", format_length(usable_depth_in, unit_mode))
+    p2.metric("Pilot Length (C)", format_length(pilot_length_in, unit_mode))
+    p3.metric("Pilot Feed Basis", format_length(pilot_diameter_in, unit_mode))
+
+    st.caption("Practical pilot depth uses the selected tool's stored pilot diameter, body diameter, angle, and pilot length.")
+
     target_bell_diameter_in = diameter_input(
-        "Target Bell Diameter",
+        "Target Bell Diameter (Optional)",
         f"{section_key}_cd_target_bell",
         unit_mode,
         target_default_in,
@@ -211,12 +229,12 @@ def render_center_drill_depth_block(section_key: str, center_drill_size: str, pr
         st.error("Target bell diameter must be larger than pilot diameter.")
         return
 
-    required_depth_in = calculate_center_drill_depth(pilot_diameter_in, target_bell_diameter_in, included_angle, drill_length_in)
+    required_depth_in = calculate_center_drill_depth(pilot_diameter_in, target_bell_diameter_in, included_angle, pilot_length_in)
 
     r1, r2, r3 = st.columns(3)
-    r1.metric("Required Depth", format_length(required_depth_in, unit_mode))
-    r2.metric("Drill Length (C)", format_length(drill_length_in, unit_mode))
-    r3.metric("Bell Diameter", format_length(target_bell_diameter_in, unit_mode))
+    r1.metric("Depth For Target Bell", format_length(required_depth_in, unit_mode))
+    r2.metric("Bell Diameter", format_length(target_bell_diameter_in, unit_mode))
+    r3.metric("Tool Body Limit", format_length(body_diameter_in, unit_mode))
 
     if target_bell_diameter_in > body_diameter_in:
         st.warning("Target bell diameter exceeds the tool body / bell diameter.")
