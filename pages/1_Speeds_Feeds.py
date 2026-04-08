@@ -30,20 +30,26 @@ st.title("Speeds & Feeds")
 st.caption("Empower MFG - Built for Joshua")
 
 CENTER_DRILL_PRESETS = {
-    "Std 00": {"style": "Standard", "angle": 60.0, "pilot": 0.025000, "body": 0.1250, "pilot_length": 0.025000},
-    "Std 0": {"style": "Standard", "angle": 60.0, "pilot": 0.031250, "body": 0.1250, "pilot_length": 0.031250},
-    "Std 1": {"style": "Standard", "angle": 60.0, "pilot": 0.046875, "body": 0.1250, "pilot_length": 0.046875},
-    "Std 2": {"style": "Standard", "angle": 60.0, "pilot": 0.078125, "body": 0.1875, "pilot_length": 0.078125},
-    "Std 3": {"style": "Standard", "angle": 60.0, "pilot": 0.109375, "body": 0.2500, "pilot_length": 0.109375},
-    "Std 4": {"style": "Standard", "angle": 60.0, "pilot": 0.125000, "body": 0.3125, "pilot_length": 0.125000},
-    "Std 5": {"style": "Standard", "angle": 60.0, "pilot": 0.187500, "body": 0.4375, "pilot_length": 0.187500},
-    "Std 6": {"style": "Standard", "angle": 60.0, "pilot": 0.218750, "body": 0.5000, "pilot_length": 0.218750},
-    "Std 7": {"style": "Standard", "angle": 60.0, "pilot": 0.250000, "body": 0.6250, "pilot_length": 0.250000},
-    "Std 8": {"style": "Standard", "angle": 60.0, "pilot": 0.312500, "body": 0.7500, "pilot_length": 0.312500},
-    "Bell 11": {"style": "Bell", "angle": 120.0, "pilot": 0.046875, "body": 0.1250, "pilot_length": 0.046875},
-    "Bell 13": {"style": "Bell", "angle": 120.0, "pilot": 0.093750, "body": 0.2500, "pilot_length": 0.093750},
-    "Bell 15": {"style": "Bell", "angle": 120.0, "pilot": 0.156250, "body": 0.4375, "pilot_length": 0.156250},
-    "Bell 17": {"style": "Bell", "angle": 120.0, "pilot": 0.218750, "body": 0.6250, "pilot_length": 0.218750},
+    "00": {"style": "Plain", "angle": 60.0, "pilot": 0.015625, "body": 0.1250, "pilot_length": 0.015625},
+    "0": {"style": "Plain", "angle": 60.0, "pilot": 0.031250, "body": 0.1250, "pilot_length": 0.031250},
+    "1": {"style": "Plain", "angle": 60.0, "pilot": 0.046875, "body": 0.1250, "pilot_length": 0.046875},
+    "2": {"style": "Plain", "angle": 60.0, "pilot": 0.078125, "body": 0.1875, "pilot_length": 0.078125},
+    "3": {"style": "Plain", "angle": 60.0, "pilot": 0.109375, "body": 0.2500, "pilot_length": 0.109375},
+    "4": {"style": "Plain", "angle": 60.0, "pilot": 0.125000, "body": 0.3125, "pilot_length": 0.125000},
+    "5": {"style": "Plain", "angle": 60.0, "pilot": 0.187500, "body": 0.4375, "pilot_length": 0.187500},
+    "6": {"style": "Plain", "angle": 60.0, "pilot": 0.218750, "body": 0.5000, "pilot_length": 0.218750},
+    "7": {"style": "Plain", "angle": 60.0, "pilot": 0.250000, "body": 0.6250, "pilot_length": 0.250000},
+    "8": {"style": "Plain", "angle": 60.0, "pilot": 0.312500, "body": 0.7500, "pilot_length": 0.312500},
+    "9": {"style": "Plain", "angle": 60.0, "pilot": 0.375000, "body": 0.8750, "pilot_length": 0.375000},
+    "10": {"style": "Plain", "angle": 60.0, "pilot": 0.500000, "body": 1.2500, "pilot_length": 0.500000},
+    "11": {"style": "Bell", "angle": 120.0, "pilot": 0.046875, "body": 0.1250, "bell": 0.1900, "pilot_length": 0.046875},
+    "12": {"style": "Bell", "angle": 120.0, "pilot": 0.062500, "body": 0.1875, "bell": 0.2500, "pilot_length": 0.062500},
+    "13": {"style": "Bell", "angle": 120.0, "pilot": 0.093750, "body": 0.2500, "bell": 0.3100, "pilot_length": 0.093750},
+    "14": {"style": "Bell", "angle": 120.0, "pilot": 0.109375, "body": 0.3125, "bell": 0.4000, "pilot_length": 0.109375},
+    "15": {"style": "Bell", "angle": 120.0, "pilot": 0.156250, "body": 0.4375, "bell": 0.5000, "pilot_length": 0.156250},
+    "16": {"style": "Bell", "angle": 120.0, "pilot": 0.187500, "body": 0.5000, "bell": 0.5900, "pilot_length": 0.187500},
+    "17": {"style": "Bell", "angle": 120.0, "pilot": 0.218750, "body": 0.6250, "bell": 0.6900, "pilot_length": 0.218750},
+    "18": {"style": "Bell", "angle": 120.0, "pilot": 0.250000, "body": 0.7500, "bell": 0.7800, "pilot_length": 0.250000},
 }
 
 
@@ -172,7 +178,7 @@ def get_center_drill_data(material_name: str):
 
 def center_drill_label(size_name: str) -> str:
     preset = CENTER_DRILL_PRESETS[size_name]
-    return f"{size_name} | {preset['style']} | pilot {preset['pilot']:.4f} in"
+    return f"Size {size_name} | {preset['style']} | pilot {preset['pilot']:.4f} in"
 
 
 def render_center_drill_size_selector(section_key: str):
@@ -190,12 +196,13 @@ def render_center_drill_depth_block(section_key: str, center_drill_size: str, pr
 
     pilot_diameter_in = preset_data["pilot"]
     body_diameter_in = preset_data["body"]
+    bell_diameter_in = preset_data.get("bell", body_diameter_in)
     pilot_length_in = preset_data["pilot_length"]
     included_angle = preset_data["angle"]
-    target_default_in = min(body_diameter_in, pilot_diameter_in + 0.0500)
+    target_default_in = min(bell_diameter_in, pilot_diameter_in + 0.0500)
     usable_depth_in = calculate_center_drill_usable_depth(
         pilot_diameter_in,
-        body_diameter_in,
+        bell_diameter_in,
         included_angle,
         pilot_length_in,
     )
@@ -208,7 +215,13 @@ def render_center_drill_depth_block(section_key: str, center_drill_size: str, pr
     with d3:
         st.metric("Pilot Diameter", format_length(pilot_diameter_in, unit_mode))
     with d4:
-        st.metric("Body / Bell Diameter", format_length(body_diameter_in, unit_mode))
+        if "bell" in preset_data:
+            st.metric(
+                "Body / Bell Diameter",
+                f"{to_display_units(body_diameter_in, unit_mode):.4f} / {to_display_units(bell_diameter_in, unit_mode):.4f} {unit_label(unit_mode)}"
+            )
+        else:
+            st.metric("Body / Bell Diameter", format_length(body_diameter_in, unit_mode))
 
     p1, p2, p3 = st.columns(3)
     p1.metric("Practical Pilot Depth", format_length(usable_depth_in, unit_mode))
@@ -234,9 +247,9 @@ def render_center_drill_depth_block(section_key: str, center_drill_size: str, pr
     r1, r2, r3 = st.columns(3)
     r1.metric("Depth For Target Bell", format_length(required_depth_in, unit_mode))
     r2.metric("Bell Diameter", format_length(target_bell_diameter_in, unit_mode))
-    r3.metric("Tool Body Limit", format_length(body_diameter_in, unit_mode))
+    r3.metric("Tool Limit", format_length(bell_diameter_in, unit_mode))
 
-    if target_bell_diameter_in > body_diameter_in:
+    if target_bell_diameter_in > bell_diameter_in:
         st.warning("Target bell diameter exceeds the tool body / bell diameter.")
 
 
