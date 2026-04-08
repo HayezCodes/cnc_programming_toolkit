@@ -1,4 +1,3 @@
-import math
 import streamlit as st
 from data.materials import LATHE_MATERIALS, MILL_MATERIALS, DRILL_DATA, OPERATOR_NOTES
 from utils.formulas import rpm_from_sfm, ipm_from_ipr, drill_feed_ipm, tap_feed_ipm_from_tpi
@@ -87,31 +86,6 @@ def diameter_input(label: str, key: str, unit_mode: str, value_in: float, step_i
 
 def format_length(value_in: float, unit_mode: str) -> str:
     return f"{to_display_units(value_in, unit_mode):.4f} {unit_label(unit_mode)}"
-
-
-def calculate_spot_depth(target_diameter_in: float, included_angle_deg: float) -> float:
-    return target_diameter_in / (2 * math.tan(math.radians(included_angle_deg / 2)))
-
-
-def calculate_center_drill_depth(
-    pilot_diameter_in: float,
-    target_bell_diameter_in: float,
-    included_angle_deg: float,
-    pilot_length_in: float,
-) -> float:
-    chamfer_depth = (target_bell_diameter_in - pilot_diameter_in) / (2 * math.tan(math.radians(included_angle_deg / 2)))
-    return chamfer_depth + pilot_length_in
-
-
-def calculate_center_drill_usable_depth(
-    pilot_diameter_in: float,
-    body_diameter_in: float,
-    included_angle_deg: float,
-    pilot_length_in: float,
-) -> float:
-    return calculate_center_drill_depth(pilot_diameter_in, body_diameter_in, included_angle_deg, pilot_length_in)
-
-
 def get_operator_notes(material_name: str):
     if "Titanium" in material_name:
         return OPERATOR_NOTES["Titanium"]
@@ -191,66 +165,23 @@ def render_center_drill_size_selector(section_key: str):
     return selected_size, CENTER_DRILL_PRESETS[selected_size]
 
 
-def render_center_drill_depth_block(section_key: str, center_drill_size: str, preset_data: dict, unit_mode: str):
-    st.markdown("### Center Drill Depth")
-
+def render_center_drill_tool_info(center_drill_size: str, preset_data: dict, unit_mode: str):
     pilot_diameter_in = preset_data["pilot"]
     body_diameter_in = preset_data["body"]
-    bell_diameter_in = preset_data.get("bell", body_diameter_in)
-    pilot_length_in = preset_data["pilot_length"]
+    bell_diameter_in = preset_data.get("bell")
     included_angle = preset_data["angle"]
-    target_default_in = min(bell_diameter_in, pilot_diameter_in + 0.0500)
-    usable_depth_in = calculate_center_drill_usable_depth(
-        pilot_diameter_in,
-        bell_diameter_in,
-        included_angle,
-        pilot_length_in,
-    )
 
-    d1, d2, d3, d4 = st.columns(4)
-    with d1:
-        st.metric("Center Drill Size", center_drill_size)
-    with d2:
-        st.metric("Style / Angle", f"{preset_data['style']} / {included_angle:.0f} deg")
-    with d3:
-        st.metric("Pilot Diameter", format_length(pilot_diameter_in, unit_mode))
-    with d4:
-        if "bell" in preset_data:
-            st.metric(
-                "Body / Bell Diameter",
-                f"{to_display_units(body_diameter_in, unit_mode):.4f} / {to_display_units(bell_diameter_in, unit_mode):.4f} {unit_label(unit_mode)}"
-            )
-        else:
-            st.metric("Body / Bell Diameter", format_length(body_diameter_in, unit_mode))
-
-    p1, p2, p3 = st.columns(3)
-    p1.metric("Practical Pilot Depth", format_length(usable_depth_in, unit_mode))
-    p2.metric("Pilot Length (C)", format_length(pilot_length_in, unit_mode))
-    p3.metric("Pilot Feed Basis", format_length(pilot_diameter_in, unit_mode))
-
-    st.caption("Practical pilot depth uses the selected tool's stored pilot diameter, body diameter, angle, and pilot length.")
-
-    target_bell_diameter_in = diameter_input(
-        "Target Bell Diameter (Optional)",
-        f"{section_key}_cd_target_bell",
-        unit_mode,
-        target_default_in,
-        0.0010
-    )
-
-    if target_bell_diameter_in <= pilot_diameter_in:
-        st.error("Target bell diameter must be larger than pilot diameter.")
-        return
-
-    required_depth_in = calculate_center_drill_depth(pilot_diameter_in, target_bell_diameter_in, included_angle, pilot_length_in)
-
-    r1, r2, r3 = st.columns(3)
-    r1.metric("Depth For Target Bell", format_length(required_depth_in, unit_mode))
-    r2.metric("Bell Diameter", format_length(target_bell_diameter_in, unit_mode))
-    r3.metric("Tool Limit", format_length(bell_diameter_in, unit_mode))
-
-    if target_bell_diameter_in > bell_diameter_in:
-        st.warning("Target bell diameter exceeds the tool body / bell diameter.")
+    if bell_diameter_in is not None:
+        d1, d2, d3, d4 = st.columns(4)
+        d1.metric("Center Drill Size", center_drill_size)
+        d2.metric("Style / Angle", f"{preset_data['style']} / {included_angle:.0f} deg")
+        d3.metric("Pilot Diameter", format_length(pilot_diameter_in, unit_mode))
+        d4.metric("Body / Bell", f"{to_display_units(body_diameter_in, unit_mode):.4f} / {to_display_units(bell_diameter_in, unit_mode):.4f} {unit_label(unit_mode)}")
+    else:
+        d1, d2, d3 = st.columns(3)
+        d1.metric("Center Drill Size", center_drill_size)
+        d2.metric("Style / Angle", f"{preset_data['style']} / {included_angle:.0f} deg")
+        d3.metric("Pilot / Body", f"{to_display_units(pilot_diameter_in, unit_mode):.4f} / {to_display_units(body_diameter_in, unit_mode):.4f} {unit_label(unit_mode)}")
 
 
 st.markdown("### Diameter Units")
@@ -286,9 +217,7 @@ with main_tab1:
         c4.metric("Feed (IPM)", f"{ipm:.2f}")
 
         st.markdown("### Setup Guidance")
-        c1, c2 = st.columns(2)
-        c1.metric("DOC Guidance", rec["doc"])
-        c2.markdown(
+        st.markdown(
             f"""
 <div style="font-size: 0.85rem; line-height: 1.35;">
 <b>Chipbreaker:</b><br>{rec["chipbreaker"]}
@@ -331,7 +260,7 @@ with main_tab1:
 
         if drill_type == "Center Drill":
             st.write(f"**Center Drill Selected:** {center_drill_size} ({center_drill_preset['style']})")
-            render_center_drill_depth_block("lathe_drill", center_drill_size, center_drill_preset, unit_mode)
+            render_center_drill_tool_info(center_drill_size, center_drill_preset, unit_mode)
 
         st.write(f"**Notes:** {drill_rec['notes']}")
         render_operator_notes(material_drill)
@@ -360,10 +289,9 @@ with main_tab1:
             hif = get_hif_feed_data(material_live)
 
             st.markdown("### Live Tooling Recommendation - HI-FEED INSERT MILL")
-            c1, c2, c3 = st.columns(3)
+            c1, c2 = st.columns(2)
             c1.metric("SFM Range", hif["sfm_range"])
             c2.metric("IPT Range", hif["ipt_range"])
-            c3.metric("Axial DOC", hif["axial_doc"])
 
             d1, d2, d3 = st.columns(3)
             d1.metric("Chip Thickness", hif["chip_thickness"])
@@ -380,15 +308,9 @@ with main_tab1:
             if em_operation_live == "rough":
                 sfm_live = apply_cut_mode(rec_live["rough_sfm"], "sfm")
                 ipt_live = apply_cut_mode(rec_live["rough_ipt"], "ipt")
-                slot_doc_live = rec_live["rough_slot_doc_factor"] * tool_diameter_live
-                side_doc_live = rec_live["rough_side_doc_factor"] * tool_diameter_live
-                finish_note_live = rec_live["finish_radial"]
             else:
                 sfm_live = apply_cut_mode(rec_live["finish_sfm"], "sfm")
                 ipt_live = apply_cut_mode(rec_live["finish_ipt"], "ipt")
-                slot_doc_live = rec_live["finish_slot_doc_factor"] * tool_diameter_live
-                side_doc_live = rec_live["finish_side_doc_factor"] * tool_diameter_live
-                finish_note_live = rec_live["finish_radial"]
 
             rpm_live = rpm_from_sfm(sfm_live, tool_diameter_live)
             ipm_live = rpm_live * flute_count_live * ipt_live
@@ -399,12 +321,6 @@ with main_tab1:
             c2.metric("RPM", f"{rpm_live:.0f}")
             c3.metric("Chipload (IPT)", f"{ipt_live:.4f}")
             c4.metric("Feed (IPM)", f"{ipm_live:.2f}")
-
-            st.markdown("### DOC Guidance")
-            d1, d2, d3 = st.columns(3)
-            d1.metric("Slot DOC", format_length(slot_doc_live, unit_mode))
-            d2.metric("Side DOC", format_length(side_doc_live, unit_mode))
-            d3.metric("Finish Radial", finish_note_live)
 
             st.write(f"**Notes:** {rec_live['notes']}")
             render_operator_notes(material_live)
@@ -440,7 +356,7 @@ with main_tab1:
 
         if drill_type_live == "Center Drill":
             st.write(f"**Center Drill Selected:** {center_drill_size_live} ({center_drill_preset_live['style']})")
-            render_center_drill_depth_block("lathe_live_drill", center_drill_size_live, center_drill_preset_live, unit_mode)
+            render_center_drill_tool_info(center_drill_size_live, center_drill_preset_live, unit_mode)
 
         st.write(f"**Notes:** {drill_rec_live['notes']}")
         render_operator_notes(material_live_drill)
@@ -458,22 +374,18 @@ with main_tab2:
             em_operation = st.selectbox("Operation", ["rough", "finish"], key="mill_em_operation")
             drill_type_mill = None
             tool_style_mill = st.selectbox("Tool Style", ["Standard Endmill", '1/2 Ingersoll Rougher (Hi-Feed)'], key="mill_tool_style")
-            spot_angle = None
         elif tool_type == "Drill":
             drill_type_mill = st.selectbox("Drill Type", ["HSS", "HSS Coated", "Cobalt", "CoroDrill"], key="mill_drill_type")
             em_operation = None
             tool_style_mill = None
-            spot_angle = None
         elif tool_type == "Spot Drill":
             em_operation = None
             drill_type_mill = None
             tool_style_mill = None
-            spot_angle = st.number_input("Included Angle (deg)", min_value=1.0, max_value=179.0, value=90.0, step=1.0, format="%.1f", key="spot_angle")
         else:
             em_operation = None
             drill_type_mill = None
             tool_style_mill = None
-            spot_angle = None
             st.write("")
     with col4:
         if tool_type == "Spot Drill":
@@ -507,21 +419,12 @@ with main_tab2:
         ipr = apply_cut_mode(rec["ipr"], "ipr")
         rpm = rpm_from_sfm(sfm, diameter)
         ipm = drill_feed_ipm(rpm, ipr)
-        target_hole_diameter = diameter_input("Target Hole Diameter", "spot_target_dia", unit_mode, min(0.2500, diameter), 0.0010)
 
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3, c4 = st.columns(4)
         c1.metric("SFM", f"{sfm:.0f}")
         c2.metric("RPM", f"{rpm:.0f}")
         c3.metric("Feed Basis (IPR)", f"{ipr:.4f}")
         c4.metric("Feed (IPM)", f"{ipm:.2f}")
-
-        if target_hole_diameter > diameter:
-            c5.metric("Required Depth", "N/A")
-            st.error("Target hole diameter cannot be larger than the spot drill diameter.")
-        else:
-            required_depth = calculate_spot_depth(target_hole_diameter, spot_angle)
-            c5.metric("Required Depth", format_length(required_depth, unit_mode))
-            st.caption("Required depth is tip depth to create a full usable spot equal to the target hole diameter.")
 
         st.write(f"**Notes:** {rec['notes']}")
         render_operator_notes(material_mill)
@@ -540,7 +443,7 @@ with main_tab2:
         c4.metric("Feed (IPM)", f"{ipm:.2f}")
 
         st.write(f"**Center Drill Selected:** {center_drill_size_mill} ({center_drill_preset_mill['style']})")
-        render_center_drill_depth_block("mill_center_drill", center_drill_size_mill, center_drill_preset_mill, unit_mode)
+        render_center_drill_tool_info(center_drill_size_mill, center_drill_preset_mill, unit_mode)
 
         st.write(f"**Notes:** {rec['notes']}")
         render_operator_notes(material_mill)
@@ -581,10 +484,9 @@ with main_tab2:
             hif = get_hif_feed_data(material_mill)
 
             st.markdown("### Endmill Recommendation - HI-FEED INSERT MILL")
-            c1, c2, c3 = st.columns(3)
+            c1, c2 = st.columns(2)
             c1.metric("SFM Range", hif["sfm_range"])
             c2.metric("IPT Range", hif["ipt_range"])
-            c3.metric("Axial DOC", hif["axial_doc"])
 
             d1, d2, d3 = st.columns(3)
             d1.metric("Chip Thickness", hif["chip_thickness"])
@@ -602,15 +504,9 @@ with main_tab2:
             if em_operation == "rough":
                 sfm = apply_cut_mode(rec["rough_sfm"], "sfm")
                 ipt = apply_cut_mode(rec["rough_ipt"], "ipt")
-                slot_doc = rec["rough_slot_doc_factor"] * diameter
-                side_doc = rec["rough_side_doc_factor"] * diameter
-                finish_note = rec["finish_radial"]
             else:
                 sfm = apply_cut_mode(rec["finish_sfm"], "sfm")
                 ipt = apply_cut_mode(rec["finish_ipt"], "ipt")
-                slot_doc = rec["finish_slot_doc_factor"] * diameter
-                side_doc = rec["finish_side_doc_factor"] * diameter
-                finish_note = rec["finish_radial"]
 
             rpm = rpm_from_sfm(sfm, diameter)
             ipm = rpm * flute_count * ipt
@@ -621,12 +517,6 @@ with main_tab2:
             c2.metric("RPM", f"{rpm:.0f}")
             c3.metric("Chipload (IPT)", f"{ipt:.4f}")
             c4.metric("Feed (IPM)", f"{ipm:.2f}")
-
-            st.markdown("### DOC Guidance")
-            d1, d2, d3 = st.columns(3)
-            d1.metric("Slot DOC", format_length(slot_doc, unit_mode))
-            d2.metric("Side DOC", format_length(side_doc, unit_mode))
-            d3.metric("Finish Radial", finish_note)
 
             st.write(f"**Notes:** {rec['notes']}")
             render_operator_notes(material_mill)
