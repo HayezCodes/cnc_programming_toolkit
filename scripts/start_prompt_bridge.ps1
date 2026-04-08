@@ -6,29 +6,13 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = Split-Path -Parent $scriptDir
-$repoName = Split-Path -Leaf $repoRoot
 
-if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
-    $ConfigPath = Join-Path $repoRoot "bridge.config.json"
-} elseif (-not [System.IO.Path]::IsPathRooted($ConfigPath)) {
-    $ConfigPath = Join-Path (Get-Location) $ConfigPath
+function Write-ConfigErrorAndExit {
+    param([string]$Message)
+
+    Write-Host "[config error] $Message" -ForegroundColor Red
+    exit 1
 }
-
-$ConfigPath = [System.IO.Path]::GetFullPath($ConfigPath)
-
-$stateRoot = if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
-    Join-Path $env:LOCALAPPDATA "UniversalPromptBridge"
-} elseif (-not [string]::IsNullOrWhiteSpace($env:TEMP)) {
-    Join-Path $env:TEMP "UniversalPromptBridge"
-} else {
-    $scriptDir
-}
-
-if (-not (Test-Path -LiteralPath $stateRoot)) {
-    New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
-}
-
-$statePath = Join-Path $stateRoot "$repoName.processed.json"
 
 function Resolve-BridgePath {
     param(
@@ -43,50 +27,54 @@ function Resolve-BridgePath {
     return [System.IO.Path]::GetFullPath((Join-Path $BasePath $Path))
 }
 
+function Get-ConfigPath {
+    param([string]$RequestedPath)
+
+    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
+        return Join-Path $repoRoot "bridge.config.json"
+    }
+
+    if ([System.IO.Path]::IsPathRooted($RequestedPath)) {
+        return [System.IO.Path]::GetFullPath($RequestedPath)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $RequestedPath))
+}
+
 function Load-Config {
     param([string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path)) {
-        throw "Bridge config not found: $Path"
-    }
-
-    return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-}
-
-function Load-ProcessedState {
-    param([string]$Path)
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        return @{}
+        Write-ConfigErrorAndExit "Missing bridge config: $Path"
     }
 
     try {
-        $state = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-        $processed = @{}
-
-        foreach ($entry in @($state.processed)) {
-            if (-not [string]::IsNullOrWhiteSpace($entry)) {
-                $processed[$entry] = $true
-            }
-        }
-
-        return $processed
+        $config = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
     } catch {
-        return @{}
+        Write-ConfigErrorAndExit "Invalid JSON in bridge config: $Path"
     }
+
+    if ($null -eq $config) {
+        Write-ConfigErrorAndExit "Bridge config is empty: $Path"
+    }
+
+    if ($null -eq $config.poll_seconds -or [int]$config.poll_seconds -lt 1) {
+        Write-ConfigErrorAndExit "bridge.config.json must define poll_seconds as an integer greater than 0."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($config.prompt_folder)) {
+        Write-ConfigErrorAndExit "bridge.config.json must define prompt_folder."
+    }
+
+    return $config
 }
 
-function Save-ProcessedState {
-    param(
-        [string]$Path,
-        [hashtable]$Processed
-    )
+function Ensure-Directory {
+    param([string]$Path)
 
-    $payload = @{
-        processed = @($Processed.Keys | Sort-Object)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
     }
-
-    $payload | ConvertTo-Json | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
 function Open-VSCode {
@@ -114,10 +102,34 @@ function Get-LatestPrompt {
         return $null
     }
 
-    return Get-ChildItem -LiteralPath $Folder -Recurse -File |
-        Where-Object { $_.Name -notmatch "example" } |
+    return Get-ChildItem -LiteralPath $Folder -File |
+        Where-Object { $_.Name -notmatch "example|sample|test" } |
         Sort-Object LastWriteTimeUtc, FullName -Descending |
         Select-Object -First 1
+}
+
+function Get-UniqueDestinationPath {
+    param(
+        [string]$Folder,
+        [string]$FileName
+    )
+
+    $candidate = Join-Path $Folder $FileName
+
+    if (-not (Test-Path -LiteralPath $candidate)) {
+        return $candidate
+    }
+
+    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+    $extension = [System.IO.Path]::GetExtension($FileName)
+    $counter = 1
+
+    do {
+        $candidate = Join-Path $Folder ("{0}_{1}{2}" -f $baseName, $counter, $extension)
+        $counter++
+    } while (Test-Path -LiteralPath $candidate)
+
+    return $candidate
 }
 
 function Invoke-GitPull {
@@ -136,25 +148,34 @@ function Invoke-GitPull {
     }
 }
 
-$config = Load-Config -Path $ConfigPath
-$configRoot = Split-Path -Parent $ConfigPath
+$resolvedConfigPath = Get-ConfigPath -RequestedPath $ConfigPath
+$config = Load-Config -Path $resolvedConfigPath
+$configRoot = Split-Path -Parent $resolvedConfigPath
 $promptFolder = Resolve-BridgePath -BasePath $configRoot -Path $config.prompt_folder
-$processed = Load-ProcessedState -Path $statePath
+$doneFolder = Join-Path (Split-Path -Parent $promptFolder) "done"
+$processed = @{}
 $pollSeconds = [int]$config.poll_seconds
+
+Ensure-Directory -Path $promptFolder
+Ensure-Directory -Path $doneFolder
 
 while ($true) {
     Invoke-GitPull -RepoRoot $repoRoot
 
-    $latest = Get-LatestPrompt -Folder $promptFolder
+    $latestPrompt = Get-LatestPrompt -Folder $promptFolder
 
-    if ($latest) {
-        $promptKey = $latest.FullName.ToLowerInvariant()
+    if ($latestPrompt) {
+        $promptKey = "{0}|{1}|{2}" -f $latestPrompt.FullName.ToLowerInvariant(), $latestPrompt.LastWriteTimeUtc.Ticks, $latestPrompt.Length
 
         if (-not $processed.ContainsKey($promptKey)) {
-            $content = Get-Content -LiteralPath $latest.FullName -Raw
+            $content = Get-Content -LiteralPath $latestPrompt.FullName -Raw
+            $donePath = Get-UniqueDestinationPath -Folder $doneFolder -FileName $latestPrompt.Name
 
-            Write-Host "NEW PROMPT: $($latest.Name)" -ForegroundColor Cyan
+            Move-Item -LiteralPath $latestPrompt.FullName -Destination $donePath
+
+            Write-Host "===== NEW PROMPT: $($latestPrompt.Name) =====" -ForegroundColor Cyan
             Write-Host $content
+            Write-Host "===== MOVED TO: $donePath =====" -ForegroundColor Cyan
 
             if ($config.copy_to_clipboard) {
                 try {
@@ -168,11 +189,10 @@ while ($true) {
             }
 
             if ($config.auto_open_prompt_file) {
-                Open-File -Path $latest.FullName
+                Open-File -Path $donePath
             }
 
             $processed[$promptKey] = $true
-            Save-ProcessedState -Path $statePath -Processed $processed
         }
     }
 
