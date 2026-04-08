@@ -1,0 +1,64 @@
+CHECKLIST EXPORT
+========================
+Status: SUBMITTED
+Job: D25313
+Drawing: A5E52374902A
+Revision: AA
+Customer: INNOMOTICS
+Programmer: JOSHUA H
+Machine: 432 Mazak QTS-450 MY
+Material: 4140
+Date: 2026-04-02 07:49:22
+
+NOTES:
+432 PROGRAM ONLY
+
+
+=== DRAWING ===
+✘ Yellow - Grind stock diameters
+✘ Light Blue - To-size diameters
+✘ Light Green - Length dimensions
+✘ Grey - Radii and edge breaks
+✘ Red - Keyways
+✘ Dark Blue - End work
+✘ Purple - Threads
+✘ Dimensions checked in correct order
+
+=== SOLIDWORKS ===
+✘ Base shaft geometry complete
+✘ Undercuts added where required
+✘ Threads modeled correctly (mean major)
+✘ Thread relief and chamfers correct
+✘ Grooves verified for width and depth
+✘ Keyway verified
+✘ End work modeled correctly
+✘ Edge breaks correct per print
+✘ Grind stock correct per side and in correct locations
+✘ Final model matches print before CAM
+
+=== MASTERCAM ===
+✔ Correct machine and post selected
+✔ Part aligned correctly
+✔ Stock defined correctly
+✔ Wireframe created for toolpaths
+✔ Steady rest / tailstock defined if needed
+✔ All tools selected before chaining
+✔ Roughing verified (tool, DOC, direction)
+✔ Finishing passes verified
+✔ Keyway verified
+✔ Tool order logical
+✔ Offsets make sense
+✔ Verify backplot
+
+=== CIMCO ===
+✔ Header complete (Part Number, Drawing Number + Rev, Machine)
+✔ Tools not starting in material
+✔ Safe start confirmed
+✔ No rapid crashes or jumps
+✔ Spindle directions correct
+✔ Drill and tap depths correct
+✔ Keyway depth, width, and length correct
+✔ Proper offsets for milling programs
+✔ Verify backplot
+✔ Confident handing to operator
+✔ Program placed in Predator machine file location

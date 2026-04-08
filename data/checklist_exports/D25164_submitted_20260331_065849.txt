@@ -1,0 +1,61 @@
+CHECKLIST EXPORT
+========================
+Status: SUBMITTED
+Job: D25164
+Drawing: PH92-29F3
+Revision: C
+Customer: DEAN
+Programmer: JOSHUA H
+Date: 2026-03-31 06:58:49
+
+NOTES:
+Just updating keyways. has proven lathe programs.
+
+
+=== DRAWING ===
+✘ Yellow - Grind stock diameters
+✘ Light Blue - To-size diameters
+✘ Light Green - Length dimensions
+✘ Grey - Radii and edge breaks
+✔ Red - Keyways
+✘ Dark Blue - End work
+✘ Purple - Threads
+✘ Dimensions checked in correct order
+✘ All highlighted items transferred to model
+
+=== SOLIDWORKS ===
+✘ Base shaft geometry complete
+✘ Undercuts added where required
+✘ Threads modeled correctly (mean major)
+✘ Thread relief and chamfers correct
+✘ Grooves verified for width and depth
+✘ End work modeled correctly
+✘ Edge breaks correct per print
+✘ Grind stock correct per side and in correct locations
+✔ Final model matches print before CAM
+
+=== MASTERCAM ===
+✔ Correct machine and post selected
+✔ Part aligned correctly
+✔ Stock defined correctly
+✔ Wireframe created for toolpaths
+✘ Steady rest / tailstock defined if needed
+✔ All tools selected before chaining
+✔ Roughing verified (tool, DOC, direction)
+✔ Finishing passes verified
+✘ Threads / grooves / keyways correct
+✔ Tool order logical
+✘ Offsets make sense
+✔ Verify backplot
+
+=== CIMCO ===
+✔ Header complete (Part Number, Drawing Number + Rev, Machine)
+✔ Tools not starting in material
+✔ Safe start confirmed
+✔ No rapid crashes or jumps
+✔ Spindle directions correct
+✘ Drill and tap depths correct
+✔ Keyway depth, width, and length correct
+✔ Proper offsets for milling programs
+✔ Verify backplot
+✔ Confident handing to operator
