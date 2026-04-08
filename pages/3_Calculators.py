@@ -1,5 +1,6 @@
 import math
 import streamlit as st
+from data.center_drills import CENTER_DRILL_PRESETS, center_drill_label, get_center_drill_options
 from utils.ui_helpers import render_sidebar_nav
 
 st.set_page_config(
@@ -8,29 +9,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-CENTER_DRILL_PRESETS = {
-    "Custom": None,
+def center_drill_select_label(option: str) -> str:
+    if option == "Custom":
+        return "Custom"
+    return center_drill_label(option)
 
-    "Std 00": {"style": "Standard", "pilot": 0.025000, "body": 0.1250, "C": 0.025000},
-    "Std 0": {"style": "Standard", "pilot": 0.031250, "body": 0.1250, "C": 0.031250},
-    "Std 1": {"style": "Standard", "pilot": 0.046875, "body": 0.1250, "C": 0.046875},
-    "Std 2": {"style": "Standard", "pilot": 0.078125, "body": 0.1875, "C": 0.078125},
-    "Std 3": {"style": "Standard", "pilot": 0.109375, "body": 0.2500, "C": 0.109375},
-    "Std 4": {"style": "Standard", "pilot": 0.125000, "body": 0.3125, "C": 0.125000},
-    "Std 5": {"style": "Standard", "pilot": 0.187500, "body": 0.4375, "C": 0.187500},
-    "Std 6": {"style": "Standard", "pilot": 0.218750, "body": 0.5000, "C": 0.218750},
-    "Std 7": {"style": "Standard", "pilot": 0.250000, "body": 0.6250, "C": 0.250000},
-    "Std 8": {"style": "Standard", "pilot": 0.312500, "body": 0.7500, "C": 0.312500},
-
-    "Bell 11": {"style": "Bell", "pilot": 0.046875, "body": 0.1250, "C": 0.046875},
-    "Bell 12": {"style": "Bell", "pilot": 0.062500, "body": 0.1875, "C": 0.062500},
-    "Bell 13": {"style": "Bell", "pilot": 0.093750, "body": 0.2500, "C": 0.093750},
-    "Bell 14": {"style": "Bell", "pilot": 0.109375, "body": 0.3125, "C": 0.109375},
-    "Bell 15": {"style": "Bell", "pilot": 0.156250, "body": 0.4375, "C": 0.156250},
-    "Bell 16": {"style": "Bell", "pilot": 0.187500, "body": 0.5000, "C": 0.187500},
-    "Bell 17": {"style": "Bell", "pilot": 0.218750, "body": 0.6250, "C": 0.218750},
-    "Bell 18": {"style": "Bell", "pilot": 0.250000, "body": 0.7500, "C": 0.250000},
-}
 
 st.markdown("""
 <style>
@@ -388,20 +371,27 @@ Use bell / body diameter like the shop talks about it. Calculator gives pilot ho
     col1, col2 = st.columns(2)
 
     with col1:
-        preset = st.selectbox("Center Drill Size", list(CENTER_DRILL_PRESETS.keys()), key="cd_preset")
-        angle = st.number_input("Included Angle (deg)", min_value=1.0, max_value=179.0, value=60.0, step=1.0, format="%.1f", key="cd_angle")
+        preset = st.selectbox(
+            "Center Drill Size",
+            get_center_drill_options(include_custom=True),
+            format_func=center_drill_select_label,
+            key="cd_preset"
+        )
 
-        if CENTER_DRILL_PRESETS[preset] is not None:
+        if preset != "Custom":
             preset_data = CENTER_DRILL_PRESETS[preset]
+            angle = preset_data["angle"]
             pilot_dia = preset_data["pilot"]
-            body_dia = preset_data["body"]
-            drill_len = preset_data["C"]
+            body_dia = preset_data.get("bell", preset_data["body"])
+            drill_len = preset_data["pilot_length"]
 
             st.metric("Style", preset_data["style"])
+            st.metric("Included Angle", f"{angle:.1f} deg")
             st.metric("Pilot Dia", f"{pilot_dia:.4f}")
             st.metric("Body / Bell Dia", f"{body_dia:.4f}")
-            st.metric("Drill Length (C)", f"{drill_len:.4f}")
+            st.metric("Pilot Length (C)", f"{drill_len:.4f}")
         else:
+            angle = st.number_input("Included Angle (deg)", min_value=1.0, max_value=179.0, value=60.0, step=1.0, format="%.1f", key="cd_angle")
             pilot_dia = st.number_input("Pilot Diameter", min_value=0.0001, value=0.1250, step=0.0010, format="%.4f", key="cd_pilot")
             body_dia = st.number_input("Body / Bell Diameter", min_value=0.0001, value=0.2500, step=0.0010, format="%.4f", key="cd_body")
             drill_len = st.number_input("Drill Length (C)", min_value=0.0001, value=0.1250, step=0.0010, format="%.4f", key="cd_drill_len")
