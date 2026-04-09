@@ -15,6 +15,17 @@ def center_drill_select_label(option: str) -> str:
     return center_drill_label(option)
 
 
+def safe_tangent(angle_degrees: float) -> float | None:
+    if angle_degrees <= 0 or angle_degrees >= 90:
+        return None
+
+    tangent_value = math.tan(math.radians(angle_degrees))
+    if abs(tangent_value) < 1e-12:
+        return None
+
+    return tangent_value
+
+
 st.markdown("""
 <style>
 [data-testid="stSidebarNav"] {
@@ -450,41 +461,260 @@ with tab4:
     st.markdown(
         """
 <div style="font-size:0.92rem; line-height:1.35;">
-Use this for quick chamfer math on diameters. BELL DIAMETER is the finished major diameter across the chamfer.
+Use this for quick edge-break math and for programming chamfer tool depth. Handy for keyway edge breaks and general chamfers.
 </div>
 """,
         unsafe_allow_html=True,
     )
 
-    chamfer_mode = st.selectbox("Mode", ["Width -> Depth", "Depth -> Width"], key="chamfer_mode")
+    with st.container(border=True):
+        st.markdown("### Basic Mode")
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        base_diameter = st.number_input("Diameter", min_value=0.0001, value=1.0000, step=0.0100, format="%.4f", key="chamfer_diameter")
-    with col2:
-        included_angle = st.number_input("Included Angle (deg)", min_value=1.0, max_value=179.0, value=90.0, step=1.0, format="%.1f", key="chamfer_angle")
-    with col3:
-        if chamfer_mode == "Width -> Depth":
-            chamfer_width = st.number_input("Chamfer Width", min_value=0.0001, value=0.0300, step=0.0010, format="%.4f", key="chamfer_width")
+        basic_mode = st.radio(
+            "Solve For",
+            ["Chamfer Size -> Edge Depth", "Edge Depth -> Chamfer Size"],
+            horizontal=True,
+            key="chamfer_basic_mode"
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if basic_mode == "Chamfer Size -> Edge Depth":
+                basic_chamfer_size = st.number_input(
+                    "Chamfer Size",
+                    min_value=0.0001,
+                    value=0.0300,
+                    step=0.0010,
+                    format="%.4f",
+                    key="chamfer_basic_size"
+                )
+            else:
+                basic_edge_depth = st.number_input(
+                    "Edge Depth",
+                    min_value=0.0001,
+                    value=0.0300,
+                    step=0.0010,
+                    format="%.4f",
+                    key="chamfer_basic_depth"
+                )
+        with col2:
+            basic_chamfer_angle = st.number_input(
+                "Chamfer Angle (deg)",
+                min_value=0.1,
+                max_value=89.9,
+                value=45.0,
+                step=1.0,
+                format="%.1f",
+                key="chamfer_basic_angle"
+            )
+
+        st.caption("45 deg chamfer: edge depth = chamfer size.")
+
+        basic_tangent = safe_tangent(basic_chamfer_angle)
+
+        if basic_tangent is None:
+            st.warning("Chamfer angle must be greater than 0 and less than 90 degrees.")
         else:
-            chamfer_depth = st.number_input("Chamfer Depth", min_value=0.0001, value=0.0300, step=0.0010, format="%.4f", key="chamfer_depth")
+            if basic_mode == "Chamfer Size -> Edge Depth":
+                basic_edge_depth = basic_chamfer_size / basic_tangent
+            else:
+                basic_chamfer_size = basic_edge_depth * basic_tangent
 
-    st.markdown("---")
+            r1, r2 = st.columns(2)
+            r1.metric("Chamfer Size", f"{basic_chamfer_size:.4f}")
+            r2.metric("Edge Depth", f"{basic_edge_depth:.4f}")
 
-    half_angle = math.radians(included_angle / 2)
+        st.write("Use Basic Mode for quick keyway edge breaks and general chamfers from a sharp edge.")
 
-    if chamfer_mode == "Width -> Depth":
-        chamfer_depth = chamfer_width / math.tan(half_angle)
-    else:
-        chamfer_width = chamfer_depth * math.tan(half_angle)
+    with st.container(border=True):
+        with st.expander("Advanced Programming / Tool Depth", expanded=True):
+            st.markdown(
+                """
+<div style="font-size:0.88rem; line-height:1.35;">
+Use this when you need the programmed depth for a chamfer mill or similar tool. Final tool depth includes the extra offset caused by a non-sharp tool tip.
+</div>
+""",
+                unsafe_allow_html=True,
+            )
 
-    bell_diameter = base_diameter + (2 * chamfer_width)
+            col1, col2 = st.columns(2)
+            with col1:
+                advanced_chamfer_size = st.number_input(
+                    "Chamfer Size",
+                    min_value=0.0001,
+                    value=0.0300,
+                    step=0.0010,
+                    format="%.4f",
+                    key="chamfer_advanced_size"
+                )
+                advanced_chamfer_angle = st.number_input(
+                    "Chamfer Angle (deg)",
+                    min_value=0.1,
+                    max_value=89.9,
+                    value=45.0,
+                    step=1.0,
+                    format="%.1f",
+                    key="chamfer_advanced_angle"
+                )
+            with col2:
+                tool_included_angle = st.number_input(
+                    "Tool Included Angle (deg)",
+                    min_value=1.0,
+                    max_value=179.9,
+                    value=90.0,
+                    step=1.0,
+                    format="%.1f",
+                    key="chamfer_tool_included_angle"
+                )
+                tool_tip_diameter = st.number_input(
+                    "Tool Tip Diameter",
+                    min_value=0.0000,
+                    value=0.0100,
+                    step=0.0010,
+                    format="%.4f",
+                    key="chamfer_tool_tip_dia"
+                )
 
-    st.markdown("### Results")
-    r1, r2, r3 = st.columns(3)
-    r1.metric("Chamfer Width", f"{chamfer_width:.4f}")
-    r2.metric("Chamfer Depth", f"{chamfer_depth:.4f}")
-    r3.metric("BELL DIAMETER", f"{bell_diameter:.4f}")
+            advanced_tangent = safe_tangent(advanced_chamfer_angle)
+            tool_half_angle = tool_included_angle / 2
+            tool_half_tangent = safe_tangent(tool_half_angle)
+
+            if advanced_tangent is None:
+                st.warning("Chamfer angle must be greater than 0 and less than 90 degrees.")
+            elif tool_half_tangent is None:
+                st.warning("Tool included angle must be greater than 0 and less than 180 degrees.")
+            else:
+                edge_depth = advanced_chamfer_size / advanced_tangent
+                tool_contact_diameter = tool_tip_diameter + (2 * edge_depth * tool_half_tangent)
+                tip_offset = (tool_tip_diameter / 2) / tool_half_tangent
+                final_tool_depth = edge_depth + tip_offset
+                tool_angle_matches = abs(tool_half_angle - advanced_chamfer_angle) <= 0.1
+
+                r1, r2 = st.columns(2)
+                r1.metric("Edge Depth", f"{edge_depth:.4f}")
+                r2.metric("Tool Contact Diameter", f"{tool_contact_diameter:.4f}")
+
+                r3, r4 = st.columns(2)
+                r3.metric("Tip Offset from Sharp Point", f"{tip_offset:.4f}")
+                r4.metric("Final Tool Depth", f"{final_tool_depth:.4f}")
+
+                st.write(
+                    f"For a {advanced_chamfer_size:.4f} chamfer at {advanced_chamfer_angle:.1f} deg, "
+                    f"program final tool depth = {final_tool_depth:.4f}"
+                )
+
+                if tool_angle_matches:
+                    st.info("Final Tool Depth is referenced from the sharp edge and already includes the tool tip diameter offset.")
+                else:
+                    st.warning(
+                        f"Tool side angle is {tool_half_angle:.1f} deg, but the requested chamfer angle is {advanced_chamfer_angle:.1f} deg. "
+                        "This tool will not make that chamfer cleanly."
+                    )
+
+                st.write("Use Tool Contact Diameter to help with your toolpath setup, especially when dialing in a chamfer on keyway edges.")
+
+    with st.container(border=True):
+        st.markdown("### Keyway / Shaft Edge Mode")
+        st.write("Use this when chamfering the straight edge of a keyway or slot on a round shaft.")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            shaft_diameter = st.number_input(
+                "Shaft Diameter",
+                min_value=0.0001,
+                value=1.0000,
+                step=0.0100,
+                format="%.4f",
+                key="chamfer_keyway_shaft_dia"
+            )
+            keyway_width = st.number_input(
+                "Keyway Width",
+                min_value=0.0001,
+                value=0.2500,
+                step=0.0010,
+                format="%.4f",
+                key="chamfer_keyway_width"
+            )
+        with col2:
+            keyway_chamfer_size = st.number_input(
+                "Chamfer Size",
+                min_value=0.0001,
+                value=0.0050,
+                step=0.0010,
+                format="%.4f",
+                key="chamfer_keyway_size"
+            )
+            keyway_chamfer_angle = st.number_input(
+                "Chamfer Angle (deg)",
+                min_value=0.1,
+                max_value=89.9,
+                value=45.0,
+                step=1.0,
+                format="%.1f",
+                key="chamfer_keyway_angle"
+            )
+        with col3:
+            keyway_tool_included_angle = st.number_input(
+                "Tool Included Angle (deg)",
+                min_value=1.0,
+                max_value=179.9,
+                value=90.0,
+                step=1.0,
+                format="%.1f",
+                key="chamfer_keyway_tool_angle"
+            )
+            keyway_tool_tip_diameter = st.number_input(
+                "Tool Tip Diameter",
+                min_value=0.0000,
+                value=0.0100,
+                step=0.0010,
+                format="%.4f",
+                key="chamfer_keyway_tool_tip"
+            )
+
+        keyway_chamfer_tangent = safe_tangent(keyway_chamfer_angle)
+        keyway_tool_half_angle = keyway_tool_included_angle / 2
+        keyway_tool_half_tangent = safe_tangent(keyway_tool_half_angle)
+
+        if keyway_width >= shaft_diameter:
+            st.error("Keyway width must be smaller than shaft diameter.")
+        elif keyway_chamfer_tangent is None:
+            st.error("Chamfer angle must be greater than 0 and less than 90 degrees.")
+        elif keyway_tool_half_tangent is None:
+            st.error("Tool included angle must be greater than 0 and less than 180 degrees.")
+        else:
+            shaft_radius = shaft_diameter / 2
+            half_width = keyway_width / 2
+            edge_drop = shaft_radius - math.sqrt(max(0.0, shaft_radius**2 - half_width**2))
+            edge_depth = keyway_chamfer_size / keyway_chamfer_tangent
+            tip_offset = (keyway_tool_tip_diameter / 2) / keyway_tool_half_tangent
+            final_tool_depth_from_edge = edge_depth + tip_offset
+            final_programmed_depth = edge_drop + final_tool_depth_from_edge
+            tool_offset_from_wall = final_tool_depth_from_edge * keyway_tool_half_tangent
+            keyway_tool_angle_matches = abs(keyway_tool_half_angle - keyway_chamfer_angle) <= 0.1
+
+            r1, r2, r3 = st.columns(3)
+            r1.metric("Edge Drop from Shaft OD", f"{edge_drop:.4f}")
+            r2.metric("Edge Depth from Sharp Edge", f"{edge_depth:.4f}")
+            r3.metric("Tool Offset from Wall", f"{tool_offset_from_wall:.4f}")
+
+            r4, r5, r6 = st.columns(3)
+            r4.metric("Tip Offset from Sharp Point", f"{tip_offset:.4f}")
+            r5.metric("Final Tool Depth from Sharp Edge", f"{final_tool_depth_from_edge:.4f}")
+            r6.metric("Final Programmed Depth from Shaft OD Top", f"{final_programmed_depth:.4f}")
+
+            st.write(
+                f"Program tool centerline {tool_offset_from_wall:.4f} off wall and "
+                f"{final_programmed_depth:.4f} down from shaft OD top."
+            )
+
+            if keyway_tool_angle_matches:
+                st.info("This tool angle matches the requested chamfer geometry for a clean edge break.")
+            else:
+                st.warning(
+                    f"Tool side angle is {keyway_tool_half_angle:.1f} deg, but the requested chamfer angle is {keyway_chamfer_angle:.1f} deg. "
+                    "This tool will not make that chamfer cleanly."
+                )
 
 with tab5:
     st.subheader("Drill Breakthrough Calculator")
