@@ -1,3 +1,4 @@
+import math
 from fractions import Fraction
 import re
 import streamlit as st
@@ -192,6 +193,10 @@ def calculate_od_thread_values(nominal_dia_in: float, pitch_in: float, material:
     model_drop_mm = model_drop_in * 25.4
     model_dia_mm = model_dia_in * 25.4
     nominal_dia_mm = nominal_dia_in * 25.4
+    estimated_thread_depth_in = 0.6495 * pitch_in
+    estimated_thread_depth_mm = estimated_thread_depth_in * 25.4
+    estimated_pass_count = estimated_thread_depth_in / 0.003
+    estimated_pass_count_rounded = math.ceil(estimated_pass_count)
 
     od_sfm = apply_cut_mode(OD_THREADING[material]["sfm"], "sfm")
     od_rpm = rpm_from_sfm(od_sfm, nominal_dia_in)
@@ -203,6 +208,10 @@ def calculate_od_thread_values(nominal_dia_in: float, pitch_in: float, material:
         "model_drop_mm": model_drop_mm,
         "model_dia_mm": model_dia_mm,
         "nominal_dia_mm": nominal_dia_mm,
+        "estimated_thread_depth_in": estimated_thread_depth_in,
+        "estimated_thread_depth_mm": estimated_thread_depth_mm,
+        "estimated_pass_count": estimated_pass_count,
+        "estimated_pass_count_rounded": estimated_pass_count_rounded,
         "od_sfm": od_sfm,
         "od_rpm": od_rpm,
         "od_ipr": od_ipr,
@@ -337,6 +346,20 @@ NOTES:
 """,
             language="text"
         )
+
+        st.markdown("### OD Thread Shop Estimate")
+        e1, e2, e3 = st.columns(3)
+        e1.metric("Pitch", f"{pitch_mm:.4f} mm ({pitch_in:.6f} in)")
+        e2.metric(
+            "Estimated Thread Depth",
+            f"{od_values['estimated_thread_depth_mm']:.4f} mm ({od_values['estimated_thread_depth_in']:.4f} in)"
+        )
+        e3.metric(
+            "Estimated Pass Count (@ .003 radial/pass)",
+            f"~{od_values['estimated_pass_count_rounded']}"
+        )
+
+        st.caption("Shop estimate only. Final pass count still depends on material, insert, machine, and finish requirement.")
     else:
         st.code(
 f"""THREAD: {callout}
@@ -363,3 +386,17 @@ NOTES:
 """,
             language="text"
         )
+
+        st.markdown("### OD Thread Shop Estimate")
+        e1, e2, e3 = st.columns(3)
+        e1.metric("Pitch", f"{pitch_in:.6f} in ({pitch_mm:.4f} mm)")
+        e2.metric(
+            "Estimated Thread Depth",
+            f"{od_values['estimated_thread_depth_in']:.4f} in ({od_values['estimated_thread_depth_mm']:.4f} mm)"
+        )
+        e3.metric(
+            "Estimated Pass Count (@ .003 radial/pass)",
+            f"~{od_values['estimated_pass_count_rounded']}"
+        )
+
+        st.caption("Shop estimate only. Final pass count still depends on material, insert, machine, and finish requirement.")
